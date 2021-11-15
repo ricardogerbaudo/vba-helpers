@@ -1,2 +1,2 @@
-# vba-helpers
-VBA helper functions 
+# VBA Helpers
+This repository contains some VBA helper functions.

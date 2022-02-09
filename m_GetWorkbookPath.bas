@@ -8,10 +8,10 @@ Function GetWorkbookPath(Optional wb As Workbook)
     
     If wb Is Nothing Then Set wb = ThisWorkbook
     
-    GetWorkbookPath = wb.Path
-    
-    If InStr(1, wb.Path, "https://") <> 0 Then
-        
+    If InStr(1, wb.Path, "https://") = 0 Then
+        GetWorkbookPath = wb.Path
+        Exit Function
+    Else
         Const HKEY_CURRENT_USER = &H80000001
         Dim objRegistryProvider As Object
         Dim strRegistryPath As String
@@ -41,7 +41,7 @@ Function GetWorkbookPath(Optional wb As Workbook)
                     Exit Function
                 End If
                 
-                'If OneDrive Personal, skips the GUID part of the URL to match with physical path
+                'If Non-Business OneDrive, skips the GUID part of the URL to match with physical path
                 If InStr(1, strUrlNamespace, "https://d.docs.live.net") <> 0 Then
                     If InStr(2, strRemainderPath, "/") = 0 Then
                         strRemainderPath = vbNullString
@@ -51,20 +51,32 @@ Function GetWorkbookPath(Optional wb As Workbook)
                 End If
                 
                 'If OneDrive Business, adds extra slash at the start of string to match the pattern
-                strRemainderPath = IIf(InStr(1, strUrlNamespace, "my.sharepoint.com") <> 0, "/", vbNullString) & strRemainderPath
+                strRemainderPath = IIf(InStr(1, strUrlNamespace, "sharepoint.com") <> 0, "/", vbNullString) & strRemainderPath
+                strRemainderPath = Replace(strRemainderPath, "/", "\")
                 
                 strLocalPath = ""
                 
-                If (InStr(1, strRemainderPath, "/")) <> 0 Then
-                    strLocalPath = Mid(strRemainderPath, InStr(1, strRemainderPath, "/"))
-                    strLocalPath = Replace(strLocalPath, "/", "\")
+                If (InStr(1, strRemainderPath, "\")) <> 0 Then
+                    strLocalPath = Mid(strRemainderPath, InStr(1, strRemainderPath, "\"))
+                ElseIf strRemainderPath <> "" Then
+                    strLocalPath = "\" & strRemainderPath
                 End If
                 
                 strLocalPath = strMountPoint & strLocalPath
-                GetWorkbookPath = strLocalPath
-                If Dir(GetWorkbookPath & "\" & wb.Name) <> "" Then Exit Function
+                
+                If Dir(strLocalPath & "\" & wb.Name) = "" Then
+                    strLocalPath = Mid(strRemainderPath, InStr(2, strRemainderPath, "\"))
+                    strLocalPath = strMountPoint & strLocalPath
+                    If Dir(strLocalPath & "\" & wb.Name) <> "" Then
+                        GetWorkbookPath = strLocalPath
+                        Exit Function
+                    End If
+                Else
+                    GetWorkbookPath = strLocalPath
+                    Exit Function
+                End If
             End If
         Next
     End If
-    
+        
 End Function
